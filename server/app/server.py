@@ -1,0 +1,55 @@
+from pathlib import Path
+
+import numpy as np
+from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.lib.preprocessor import preprocess
+
+app = FastAPI(title="Land Document Processor API")
+app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+def is_valid_image(file: UploadFile) -> bool:
+    """Validate file content type and extension."""
+    if file.content_type and file.content_type.startswith("image/"):
+        return True
+
+    if file.filename:
+        ext = Path(file.filename).suffix.lower()
+        if ext in ALLOWED_IMAGE_EXTENSIONS:
+            return True
+
+    return False
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Land Document Processor Server is running"}
+
+
+@app.post("/upload", status_code=status.HTTP_201_CREATED)
+async def upload_image(file: UploadFile = File(...)):
+    """
+    Upload a single image file for document processing.
+    Accepts image files (JPEG, PNG, WEBP) and processes them.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="No filename provided in upload.")
+
+    if not is_valid_image(file):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Invalid file type '{file.content_type}'. Only image files ({', '.join(ALLOWED_IMAGE_EXTENSIONS)}) are allowed.")
+
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to decode image. Please ensure the file is a valid uncorrupted image.")
+
+    processed_image = preprocess(image)
+
+    return {
+        "message": "Image uploaded and preprocessed successfully",
+    }
