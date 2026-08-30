@@ -1,11 +1,12 @@
 from pathlib import Path
 
+import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.lib.preprocessor import preprocess
+from app.lib.ocr import extract
 
 app = FastAPI(title="Land Document Processor API")
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
@@ -22,12 +23,6 @@ def is_valid_image(file: UploadFile) -> bool:
             return True
 
     return False
-
-
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "Land Document Processor Server is running"}
-
 
 @app.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_image(file: UploadFile = File(...)):
@@ -48,8 +43,11 @@ async def upload_image(file: UploadFile = File(...)):
     if image is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to decode image. Please ensure the file is a valid uncorrupted image.")
 
-    processed_image = preprocess(image)
+    processed_image_path = preprocess(image)
+    result = extract(processed_image_path)
+    print(result)
 
     return {
         "message": "Image uploaded and preprocessed successfully",
+        "result": result
     }
