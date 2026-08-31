@@ -41,9 +41,7 @@ async def upload_image(file: UploadFile = File(...)):
 
     processed_image_path = preprocess(image)
     response = extract(processed_image_path)
-    print(response)
-    extracted_data = process_by_llm(response['text'], processed_image_path)
-
+    extracted_data = process_by_llm(response, processed_image_path)
     print(extracted_data)
 
     return {

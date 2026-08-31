@@ -25,10 +25,7 @@ def process_by_llm(text: str, img_path: str):
     )
 
     response = chat.send_message([
-        Part.from_bytes(
-            data=image_data,
-            mime_type="image/jpeg"
-        ),
+        Part.from_bytes(data=image_data,mime_type="image/jpeg"),
         create_prompt(text)
     ])
 
